@@ -1,4 +1,4 @@
-'use client'
+ï»¿'use client'
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
@@ -42,12 +42,12 @@ export default function Home() {
 
   return (
     <main className="max-w-2xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Lƒƒ‚’ </h1>
+      <h1 className="text-2xl font-bold mb-6">Ad Memo</h1>
       <div className="flex flex-col gap-3 mb-8">
-        <input className="border p-2 rounded" placeholder="ƒNƒ‰ƒCƒAƒ“ƒg–¼" value={client} onChange={e => setClient(e.target.value)} />
-        <input className="border p-2 rounded" placeholder="”}‘ÌiMeta / Google ‚È‚Çj" value={media} onChange={e => setMedia(e.target.value)} />
-        <textarea className="border p-2 rounded" placeholder="ƒƒ‚" rows={3} value={memo} onChange={e => setMemo(e.target.value)} />
-        <button className="bg-black text-white p-2 rounded" onClick={addMemo}>•Û‘¶</button>
+        <input className="border p-2 rounded" placeholder="Client" value={client} onChange={e => setClient(e.target.value)} />
+        <input className="border p-2 rounded" placeholder="Media (Meta / Google)" value={media} onChange={e => setMedia(e.target.value)} />
+        <textarea className="border p-2 rounded" placeholder="Memo" rows={3} value={memo} onChange={e => setMemo(e.target.value)} />
+        <button className="bg-black text-white p-2 rounded" onClick={addMemo}>Save</button>
       </div>
       <div className="flex flex-col gap-4">
         {memos.map(m => (
@@ -57,7 +57,7 @@ export default function Home() {
                 <span className="font-bold">{m.client}</span>
                 <span className="ml-2 text-gray-500 text-sm">{m.media}</span>
               </div>
-              <button className="text-red-400 text-sm" onClick={() => deleteMemo(m.id)}>íœ</button>
+              <button className="text-red-400 text-sm" onClick={() => deleteMemo(m.id)}>Delete</button>
             </div>
             <p className="mt-2 text-gray-700">{m.memo}</p>
             <p className="mt-1 text-xs text-gray-400">{new Date(m.created_at).toLocaleString('ja-JP')}</p>
