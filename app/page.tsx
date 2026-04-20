@@ -16,6 +16,9 @@ export default function Home() {
   const [client, setClient] = useState('')
   const [media, setMedia] = useState('')
   const [memo, setMemo] = useState('')
+  const [url, setUrl] = useState('')
+  const [links, setLinks] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     fetchMemos()
@@ -40,6 +43,20 @@ export default function Home() {
     fetchMemos()
   }
 
+  async function loadUrl() {
+    if (!url) return
+    setLoading(true)
+    setLinks([])
+    const res = await fetch('/api/scrape', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    })
+    const data = await res.json()
+    setLinks(data.links || [])
+    setLoading(false)
+  }
+
   return (
     <main className="max-w-2xl mx-auto p-8">
       <h1 className="text-2xl font-bold mb-6">Ad Memo</h1>
@@ -48,6 +65,26 @@ export default function Home() {
         <input className="border p-2 rounded" placeholder="Media (Meta / Google)" value={media} onChange={e => setMedia(e.target.value)} />
         <textarea className="border p-2 rounded" placeholder="Memo" rows={3} value={memo} onChange={e => setMemo(e.target.value)} />
         <button className="bg-black text-white p-2 rounded" onClick={addMemo}>Save</button>
+      </div>
+      <div className="flex flex-col gap-3 mb-8">
+        <h2 className="text-lg font-bold">URL Scanner</h2>
+        <div className="flex gap-2">
+          <input className="border p-2 rounded flex-1" placeholder="https://example.com" value={url} onChange={e => setUrl(e.target.value)} />
+          <button className="bg-blue-600 text-white px-4 rounded" onClick={loadUrl}>Load URL</button>
+        </div>
+        {loading && <p className="text-gray-500 text-sm">Loading...</p>}
+        {links.length > 0 && (
+          <div className="border rounded p-4">
+            <p className="text-sm font-bold mb-2">External links: {links.length}</p>
+            <ul className="flex flex-col gap-1">
+              {links.map((link, i) => (
+                <li key={i} className="text-xs text-blue-600 break-all">
+                  <a href={link} target="_blank" rel="noopener noreferrer">{link}</a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
       <div className="flex flex-col gap-4">
         {memos.map(m => (
