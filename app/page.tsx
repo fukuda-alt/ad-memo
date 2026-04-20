@@ -9,6 +9,7 @@ type Memo = {
   media: string
   memo: string
   url: string
+  user_name: string
   created_at: string
 }
 
@@ -18,11 +19,19 @@ export default function Home() {
   const [media, setMedia] = useState('')
   const [memo, setMemo] = useState('')
   const [url, setUrl] = useState('')
+  const [user, setUser] = useState<any>(null)
   const [scanResults, setScanResults] = useState<Record<number, string[]>>({})
   const [scanning, setScanning] = useState<Record<number, boolean>>({})
 
   useEffect(() => {
     fetchMemos()
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user || null)
+    })
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null)
+    })
+    return () => listener.subscription.unsubscribe()
   }, [])
 
   async function fetchMemos() {
@@ -30,9 +39,21 @@ export default function Home() {
     if (data) setMemos(data)
   }
 
+  async function signInWithGoogle() {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    })
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut()
+  }
+
   async function addMemo() {
-    if (!client || !media || !memo) return
-    await supabase.from('memos').insert([{ client, media, memo, url }])
+    if (!client || !media || !memo || !user) return
+    const user_name = user.user_metadata?.full_name || user.email
+    await supabase.from('memos').insert([{ client, media, memo, url, user_name }])
     setClient('')
     setMedia('')
     setMemo('')
@@ -59,49 +80,67 @@ export default function Home() {
   }
 
   return (
-    <main className="max-w-3xl mx-auto p-8">
-      <h1 className="text-2xl font-bold mb-6">Ad Memo</h1>
-      <div className="flex flex-col gap-3 mb-8">
-        <input className="border p-2 rounded" placeholder="Client" value={client} onChange={e => setClient(e.target.value)} />
-        <input className="border p-2 rounded" placeholder="Media (Meta / Google)" value={media} onChange={e => setMedia(e.target.value)} />
-        <input className="border p-2 rounded" placeholder="URL (optional)" value={url} onChange={e => setUrl(e.target.value)} />
-        <textarea className="border p-2 rounded" placeholder="Memo" rows={3} value={memo} onChange={e => setMemo(e.target.value)} />
-        <button className="bg-black text-white p-2 rounded" onClick={addMemo}>Save</button>
-      </div>
-      <div className="flex flex-col gap-4">
-        {memos.map(m => (
-          <div key={m.id} className="border p-4 rounded">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="font-bold">{m.client}</span>
-                    <span className="ml-2 text-gray-500 text-sm">{m.media}</span>
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-8 py-4 flex justify-between items-center">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 bg-indigo-600 rounded-md"></div>
+          <span className="font-semibold text-gray-900 text-lg">Ad Memo</span>
+        </div>
+        {user ? (
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500">{user.user_metadata?.full_name || user.email}</span>
+            <button className="text-sm text-gray-500 border border-gray-200 px-3 py-1.5 rounded-lg hover:bg-gray-50" onClick={signOut}>Sign out</button>
+          </div>
+        ) : (
+          <button className="flex items-center gap-2 bg-indigo-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-indigo-700" onClick={signInWithGoogle}>
+            Sign in with Google
+          </button>
+        )}
+      </header>
+      <main className="max-w-3xl mx-auto px-8 py-10">
+        {user && (
+          <div className="bg-white border border-gray-200 rounded-xl p-6 mb-8 shadow-sm">
+            <h2 className="text-sm font-semibold text-gray-700 mb-4">New Memo</h2>
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <input className="border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Client" value={client} onChange={e => setClient(e.target.value)} />
+              <input className="border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="Media (Meta / Google)" value={media} onChange={e => setMedia(e.target.value)} />
+            </div>
+            <input className="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3" placeholder="URL (optional)" value={url} onChange={e => setUrl(e.target.value)} />
+            <textarea className="w-full border border-gray-200 p-2.5 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3" placeholder="Memo" rows={3} value={memo} onChange={e => setMemo(e.target.value)} />
+            <button className="bg-indigo-600 text-white text-sm px-5 py-2 rounded-lg hover:bg-indigo-700" onClick={addMemo}>Save</button>
+          </div>
+        )}
+        <div className="flex flex-col gap-3">
+          {memos.map(m => (
+            <div key={m.id} className="bg-white border border-gray-200 rounded-xl p-5 shadow-sm flex gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-gray-900">{m.client}</span>
+                    <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-full">{m.media}</span>
+                    {m.user_name && <span className="text-xs text-gray-400">by {m.user_name}</span>}
                   </div>
-                  <button className="text-red-400 text-sm" onClick={() => deleteMemo(m.id)}>Delete</button>
+                  {user && (
+                    <button className="text-xs text-red-400 hover:text-red-600 ml-2 shrink-0" onClick={() => deleteMemo(m.id)}>Delete</button>
+                  )}
                 </div>
-                <p className="mt-2 text-gray-700">{m.memo}</p>
-                {m.url && (
-                  <p className="mt-1 text-xs text-blue-500 break-all">{m.url}</p>
-                )}
-                <div className="mt-2 flex items-center gap-2">
+                <p className="text-sm text-gray-700 mb-2">{m.memo}</p>
+                {m.url && <p className="text-xs text-indigo-500 break-all mb-2">{m.url}</p>}
+                <div className="flex items-center gap-3">
                   {m.url && (
-                    <button
-                      className="text-xs bg-blue-600 text-white px-3 py-1 rounded"
-                      onClick={() => scanUrl(m.id, m.url)}
-                    >
+                    <button className="text-xs bg-indigo-600 text-white px-3 py-1 rounded-lg hover:bg-indigo-700" onClick={() => scanUrl(m.id, m.url)}>
                       {scanning[m.id] ? 'Scanning...' : 'URL Scan'}
                     </button>
                   )}
+                  <span className="text-xs text-gray-400">{new Date(m.created_at).toLocaleString('ja-JP')}</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-400">{new Date(m.created_at).toLocaleString('ja-JP')}</p>
               </div>
               {scanResults[m.id] && (
-                <div className="w-48 border-l pl-4 text-xs">
-                  <p className="font-bold mb-1">External links: {scanResults[m.id].length}</p>
-                  <ul className="flex flex-col gap-1 overflow-y-auto max-h-32">
+                <div className="w-44 shrink-0 border-l border-gray-100 pl-4">
+                  <p className="text-xs font-semibold text-gray-700 mb-1">External links: {scanResults[m.id].length}</p>
+                  <ul className="flex flex-col gap-1 overflow-y-auto max-h-28">
                     {scanResults[m.id].map((link, i) => (
-                      <li key={i} className="text-blue-600 break-all">
+                      <li key={i} className="text-xs text-indigo-500 break-all">
                         <a href={link} target="_blank" rel="noopener noreferrer">{link}</a>
                       </li>
                     ))}
@@ -109,9 +148,9 @@ export default function Home() {
                 </div>
               )}
             </div>
-          </div>
-        ))}
-      </div>
-    </main>
+          ))}
+        </div>
+      </main>
+    </div>
   )
 }
